@@ -1,0 +1,87 @@
+{
+  "mode": "operator",
+  "description": "Customer-facing operator mode - strict, no customization",
+  "allowedChannels": ["sales", "onboarding", "support"],
+  "allowedActions": [
+    "create_lead",
+    "update_lead_status",
+    "create_ticket",
+    "suggest_plan",
+    "book_call_request",
+    "send_doc_link"
+  ],
+  "strictRules": {
+    "noCustomization": {
+      "enabled": true,
+      "refusalTemplate": "I understand you're looking for customization. We focus on delivering our proven, standardized solution that's been optimized for success. Custom development isn't part of our current offering, but our standard workflows have helped many similar companies achieve their goals. Would you like to see how our {tier} plan aligns with your needs?"
+    },
+    "noRoadmaps": {
+      "enabled": true,
+      "refusalTemplate": "I can't provide specific timelines or roadmaps for features. Our product team prioritizes based on customer feedback and strategic goals. If you'd like to share your use case, I can help determine if our current offering is a good fit, or I can connect you with our team for a discussion."
+    },
+    "noTimelines": {
+      "enabled": true,
+      "refusalTemplate": "I don't have access to specific timelines for features or updates. Our focus is on ensuring you get maximum value from what's available today. Would you like me to show you how our current features can address your needs?"
+    },
+    "maxQuestions": {
+      "sales": 3,
+      "onboarding": 0,
+      "support": 0
+    },
+    "mustQuotePricing": {
+      "enabled": true,
+      "source": "config/pricing.json"
+    }
+  },
+  "bannedPhrases": [
+    "we can customize",
+    "we'll build that",
+    "we can add",
+    "we'll create",
+    "custom development",
+    "we'll develop",
+    "we can modify",
+    "we'll change",
+    "coming soon",
+    "in the next release",
+    "we're planning",
+    "we're working on",
+    "it's on the roadmap",
+    "we'll have that",
+    "next quarter",
+    "next month",
+    "in Q",
+    "by [date]",
+    "we promise",
+    "we guarantee",
+    "we'll definitely"
+  ],
+  "commitmentPatterns": [
+    "will be",
+    "going to",
+    "we'll",
+    "we will",
+    "guaranteed",
+    "promise",
+    "commit",
+    "assure"
+  ],
+  "workflows": {
+    "sales": {
+      "maxQuestions": 3,
+      "decisionPoints": ["FIT", "NOT_FIT"],
+      "nextSteps": ["suggest_plan", "book_call_request", "create_lead"]
+    },
+    "onboarding": {
+      "canonicalWorkflow": "onboarding_steps.md",
+      "requireFirstWin": true,
+      "noDeviation": true
+    },
+    "support": {
+      "howTo": "send_doc_link",
+      "bug": "create_ticket",
+      "churnLanguage": ["create_ticket", "book_call_request"]
+    }
+  }
+}
+

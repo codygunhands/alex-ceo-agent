@@ -1,0 +1,121 @@
+name: alex-ceo-agent
+region: nyc
+services:
+  - name: api
+    github:
+      repo: codygunhands/alex-ceo-agent
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: Dockerfile.api
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: ${ai-employees-db.DATABASE_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: ${ai-employees-redis.REDIS_URL}
+      - key: GRADIENT_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${GRADIENT_API_KEY}
+      - key: GRADIENT_BASE_URL
+        scope: RUN_TIME
+        value: https://api.gradient.ai/api/v1
+      - key: GRADIENT_MODEL
+        scope: RUN_TIME
+        type: SECRET
+        value: ${GRADIENT_MODEL}
+      - key: API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${API_KEY}
+      - key: INTERNAL_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${INTERNAL_API_KEY}
+      - key: PORT
+        scope: RUN_TIME
+        value: "3000"
+      - key: HOST
+        scope: RUN_TIME
+        value: "0.0.0.0"
+      - key: LOG_LEVEL
+        scope: RUN_TIME
+        value: info
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: AI_EMPLOYEE_NAME
+        scope: RUN_TIME
+        value: "alex-ceo"
+      - key: AI_ROLE
+        scope: RUN_TIME
+        value: "CEO"
+    health_check:
+      http_path: /healthz
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+
+  - name: worker
+    github:
+      repo: codygunhands/alex-ceo-agent
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: Dockerfile.worker
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: ${ai-employees-db.DATABASE_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: ${ai-employees-redis.REDIS_URL}
+      - key: GRADIENT_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${GRADIENT_API_KEY}
+      - key: GRADIENT_BASE_URL
+        scope: RUN_TIME
+        value: https://api.gradient.ai/api/v1
+      - key: GRADIENT_MODEL
+        scope: RUN_TIME
+        type: SECRET
+        value: ${GRADIENT_MODEL}
+      - key: LOG_LEVEL
+        scope: RUN_TIME
+        value: info
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: AI_EMPLOYEE_NAME
+        scope: RUN_TIME
+        value: "alex-ceo"
+      - key: AI_ROLE
+        scope: RUN_TIME
+        value: "CEO"
+
+databases:
+  - name: ai-employees-db
+    engine: PG
+    version: "15"
+    production: true
+    cluster_name: ai-employees-db
+    db_name: defaultdb
+    db_user: doadmin
+  - name: ai-employees-redis
+    engine: REDIS
+    version: "7"
+    production: true
+    cluster_name: ai-employees-redis
+

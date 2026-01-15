@@ -1,0 +1,29 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci
+
+# Copy Prisma schema first (needed for generate)
+COPY prisma ./prisma
+
+# Generate Prisma client (doesn't need DATABASE_URL for generation)
+RUN DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy" npx prisma generate
+
+# Copy source code
+COPY . .
+
+# Build TypeScript
+RUN npm run build
+
+# Prune devDependencies after build
+RUN npm prune --production
+
+# Start worker
+CMD ["node", "dist/worker.js"]
+

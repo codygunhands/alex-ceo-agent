@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeff Chat Widget - Standalone Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            margin-top: 0;
+        }
+        
+        /* Chat Toggle Button */
+        .jeff-chat-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #000;
+            color: #fff;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+        
+        .jeff-chat-button:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Chat Widget */
+        #jeff-chat-widget {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 400px;
+            height: 600px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            z-index: 1001;
+            display: none;
+            flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        #jeff-chat-header {
+            background: #000;
+            color: #fff;
+            padding: 16px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #jeff-chat-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        #jeff-chat-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        
+        #jeff-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .jeff-message {
+            max-width: 80%;
+            padding: 12px;
+            border-radius: 8px;
+            word-wrap: break-word;
+        }
+        
+        .jeff-message.user {
+            align-self: flex-end;
+            background: #000;
+            color: #fff;
+        }
+        
+        .jeff-message.assistant {
+            align-self: flex-start;
+            background: #f5f5f5;
+            color: #000;
+        }
+        
+        .jeff-message.thinking {
+            align-self: flex-start;
+            background: #f5f5f5;
+            color: #666;
+            font-style: italic;
+        }
+        
+        #jeff-chat-input-container {
+            padding: 16px;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            gap: 8px;
+        }
+        
+        #jeff-chat-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        #jeff-chat-send {
+            padding: 12px 24px;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        #jeff-chat-send:hover {
+            background: #333;
+        }
+        
+        #jeff-chat-send:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        @media (max-width: 480px) {
+            #jeff-chat-widget {
+                width: 100%;
+                height: 100%;
+                bottom: 0;
+                right: 0;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Jeff Chat Widget Demo</h1>
+        <p>This is a standalone demo of the Jeff chat widget. Click the chat button in the bottom-right corner to start chatting!</p>
+        <p><strong>Note:</strong> Update <code>JEFF_API_URL</code> in the JavaScript below with Jeff's actual URL from Super Admin dashboard.</p>
+    </div>
+    
+    <!-- Jeff Chat Widget -->
+    <div id="jeff-chat-widget">
+        <div id="jeff-chat-container">
+            <div id="jeff-chat-header">
+                <h3>Chat with Jeff</h3>
+                <button id="jeff-chat-close">×</button>
+            </div>
+            <div id="jeff-chat-messages"></div>
+            <div id="jeff-chat-input-container">
+                <input type="text" id="jeff-chat-input" placeholder="Type your message...">
+                <button id="jeff-chat-send">Send</button>
+            </div>
+        </div>
+    </div>
+    <button id="jeff-chat-toggle" class="jeff-chat-button">💬</button>
+    
+    <script>
+        // Configuration - UPDATE THIS!
+        const JEFF_API_URL = 'https://jeff-ai-agent-xxxxx.ondigitalocean.app'; // Get from Super Admin dashboard
+        const CHANNEL = 'support'; // or 'sales', 'onboarding'
+        
+        // Generate or retrieve session ID
+        function getSessionId() {
+            let sessionId = localStorage.getItem('jeff_session_id');
+            if (!sessionId) {
+                // Generate UUID v4
+                sessionId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+                localStorage.setItem('jeff_session_id', sessionId);
+            }
+            return sessionId;
+        }
+        
+        // Initialize chat
+        function initChat() {
+            const toggle = document.getElementById('jeff-chat-toggle');
+            const widget = document.getElementById('jeff-chat-widget');
+            const close = document.getElementById('jeff-chat-close');
+            const sendBtn = document.getElementById('jeff-chat-send');
+            const input = document.getElementById('jeff-chat-input');
+            const messages = document.getElementById('jeff-chat-messages');
+            
+            // Toggle chat
+            toggle.addEventListener('click', () => {
+                widget.style.display = widget.style.display === 'none' ? 'flex' : 'none';
+                if (widget.style.display === 'flex') {
+                    input.focus();
+                }
+            });
+            
+            close.addEventListener('click', () => {
+                widget.style.display = 'none';
+            });
+            
+            // Send message
+            function sendMessage() {
+                const message = input.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessage('user', message);
+                input.value = '';
+                sendBtn.disabled = true;
+                
+                // Show thinking indicator
+                const thinkingId = addMessage('thinking', 'Jeff is thinking...');
+                
+                // Send to Jeff
+                fetch(`${JEFF_API_URL}/v1/agent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sessionId: getSessionId(),
+                        mode: 'operator',
+                        channel: CHANNEL,
+                        message: message,
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove thinking message
+                    const thinkingEl = document.getElementById(thinkingId);
+                    if (thinkingEl) thinkingEl.remove();
+                    
+                    // Add Jeff's response
+                    addMessage('assistant', data.reply);
+                    
+                    // Handle actions (e.g., create ticket)
+                    if (data.actions && data.actions.length > 0) {
+                        handleActions(data.actions);
+                    }
+                    
+                    sendBtn.disabled = false;
+                    input.focus();
+                })
+                .catch(error => {
+                    // Remove thinking message
+                    const thinkingEl = document.getElementById(thinkingId);
+                    if (thinkingEl) thinkingEl.remove();
+                    
+                    addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+                    sendBtn.disabled = false;
+                    console.error('Jeff API error:', error);
+                });
+            }
+            
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            // Add welcome message
+            addMessage('assistant', 'Hi! I\'m Jeff, your AI assistant. How can I help you today?');
+        }
+        
+        // Add message to chat
+        function addMessage(role, content) {
+            const messages = document.getElementById('jeff-chat-messages');
+            const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            const messageEl = document.createElement('div');
+            messageEl.id = messageId;
+            messageEl.className = `jeff-message ${role}`;
+            messageEl.textContent = content;
+            messages.appendChild(messageEl);
+            messages.scrollTop = messages.scrollHeight;
+            return messageId;
+        }
+        
+        // Handle actions from Jeff
+        function handleActions(actions) {
+            actions.forEach(action => {
+                switch (action.type) {
+                    case 'create_ticket':
+                        addMessage('assistant', '✓ I\'ve created a support ticket for you. Our team will follow up soon.');
+                        break;
+                    case 'suggest_plan':
+                        addMessage('assistant', `💡 Based on your needs, I recommend the ${action.payload.tier} plan.`);
+                        break;
+                }
+            });
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initChat);
+        } else {
+            initChat();
+        }
+    </script>
+</body>
+</html>
+

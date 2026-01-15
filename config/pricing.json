@@ -1,0 +1,75 @@
+{
+  "tiers": {
+    "Basic": {
+      "name": "Basic",
+      "monthlyPrice": 99,
+      "yearlyPrice": 990,
+      "seats": {
+        "included": 3,
+        "additionalPrice": 25
+      },
+      "features": [
+        "Core features",
+        "Email support",
+        "Standard onboarding"
+      ],
+      "onboardingFee": 0,
+      "excluded": [
+        "Priority support",
+        "Custom integrations",
+        "Dedicated account manager"
+      ]
+    },
+    "Core": {
+      "name": "Core",
+      "monthlyPrice": 299,
+      "yearlyPrice": 2990,
+      "seats": {
+        "included": 10,
+        "additionalPrice": 20
+      },
+      "features": [
+        "All Basic features",
+        "Priority support",
+        "Advanced features",
+        "Standard onboarding"
+      ],
+      "onboardingFee": 0,
+      "excluded": [
+        "Custom integrations",
+        "Dedicated account manager"
+      ]
+    },
+    "Premium": {
+      "name": "Premium",
+      "monthlyPrice": 799,
+      "yearlyPrice": 7990,
+      "seats": {
+        "included": 25,
+        "additionalPrice": 15
+      },
+      "features": [
+        "All Core features",
+        "Custom integrations",
+        "Dedicated account manager",
+        "Priority onboarding",
+        "24/7 support"
+      ],
+      "onboardingFee": 0,
+      "excluded": []
+    }
+  },
+  "onboardingFee": {
+    "standard": 0,
+    "priority": 500,
+    "custom": "Contact sales"
+  },
+  "addOns": {
+    "additionalSeats": {
+      "Basic": 25,
+      "Core": 20,
+      "Premium": 15
+    }
+  }
+}
+

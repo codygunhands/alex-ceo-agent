@@ -1,0 +1,166 @@
+// Prisma schema for Jeff AI Agent
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  mode        String   // "operator" | "marketing"
+  lastChannel String?  // "sales" | "onboarding" | "support" | "marketing"
+  aiEmployee  String   @default("jeff") // "jeff" | "sales" | "support" | "operations"
+  
+  messages    Message[]
+  auditLogs   AuditLog[]
+  drafts      Draft[]
+  tickets     Ticket[]
+  
+  @@index([mode])
+  @@index([lastChannel])
+  @@index([aiEmployee])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "assistant" | "system"
+  channel   String   // "sales" | "onboarding" | "support" | "marketing"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model Lead {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  status            String   @default("new") // "new" | "qualified" | "contacted" | "converted" | "lost"
+  companyName       String?
+  contactEmail      String?
+  notes             String?  @db.Text
+  source            String?  // "sales" | "onboarding" | "support" | "marketing"
+  qualificationScore Int?     // 0-100
+  
+  tickets           Ticket[]
+  
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Ticket {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  status    String   @default("open") // "open" | "in_progress" | "resolved" | "closed"
+  priority  String   // "low" | "medium" | "high" | "urgent"
+  summary   String
+  details   String   @db.Text
+  sessionId String?
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  leadId    String?
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  
+  @@index([status])
+  @@index([priority])
+  @@index([sessionId])
+  @@index([leadId])
+}
+
+model AuditLog {
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now())
+  sessionId        String?
+  session          Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  mode             String
+  channel          String
+  rawPrompt        String   @db.Text
+  rawModelResponse String   @db.Text
+  finalResponse    String   @db.Text
+  violationsJson   String?  @db.Text // JSON array of violations
+  actionsJson      String?  @db.Text // JSON array of actions
+  model            String
+  latencyMs        Int
+  
+  @@index([sessionId])
+  @@index([mode])
+  @@index([createdAt])
+}
+
+model Draft {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+  sessionId    String?
+  session      Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  type         String   // "post" | "email" | "landing" | "case_study" | "ad_copy"
+  topic        String
+  content      String   @db.Text
+  metadataJson String?  @db.Text // JSON object
+  
+  @@index([sessionId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model BoardMessage {
+  id        String   @id @default(uuid())
+  from      String   // "alex-ceo", "finley-cfo", etc.
+  to        String   // "alex-ceo" | "all" | specific board member
+  message   String   @db.Text
+  type      String   // "question" | "proposal" | "decision" | "alert" | "update"
+  context   Json?    // Additional context (proposalId, decisionId, etc.)
+  priority  String   @default("medium") // "low" | "medium" | "high" | "urgent"
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  @@index([from])
+  @@index([to])
+  @@index([type])
+  @@index([read])
+}
+
+model BoardProposal {
+  id                String   @id @default(uuid())
+  boardMember       String   // Who created the proposal
+  initiative        String   @db.Text
+  reasoning         String   @db.Text
+  impact            Json?    // { cost, benefit, urgency, risk }
+  status            String   @default("pending") // "pending" | "approved" | "rejected" | "deferred"
+  createdAt         DateTime @default(now())
+  decidedAt         DateTime?
+  decidedBy         String?  // CEO who made the decision
+  decisionReasoning String?  @db.Text
+  
+  decisions         BoardDecision[]
+  
+  @@index([boardMember])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model BoardDecision {
+  id          String        @id @default(uuid())
+  proposalId  String?
+  proposal    BoardProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  boardMember String        // Who made the decision (usually CEO)
+  decision    String        // "approve" | "reject" | "defer"
+  reasoning   String        @db.Text
+  impact      Json?         // Expected impact
+  status      String        @default("pending") // "pending" | "executing" | "completed" | "failed"
+  createdAt   DateTime      @default(now())
+  executedAt  DateTime?
+  executedBy  String?       // Board member who executed
+  
+  @@index([boardMember])
+  @@index([status])
+  @@index([proposalId])
+}
+

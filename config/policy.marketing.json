@@ -1,0 +1,74 @@
+{
+  "mode": "marketing",
+  "description": "Internal-only marketing mode - creative drafts and analysis",
+  "allowedChannels": ["marketing"],
+  "allowedActions": [
+    "create_content_draft",
+    "create_campaign_plan",
+    "create_objection_report",
+    "create_content_calendar",
+    "generate_graphics",
+    "capture_screenshot",
+    "render_html_screenshot"
+  ],
+  "strictRules": {
+    "internalOnly": {
+      "enabled": true,
+      "description": "Marketing mode must never contact customers, publish, spend money, or create tickets/leads"
+    },
+    "draftsOnly": {
+      "enabled": true,
+      "description": "All outputs are drafts requiring human review"
+    },
+    "claimsChecklist": {
+      "enabled": true,
+      "description": "Must flag factual claims as 'needs verification against KB/pricing'"
+    },
+    "noCommitments": {
+      "enabled": true,
+      "description": "Never mention roadmap or timelines as commitments. Can propose hypothetical positioning but label as hypothesis."
+    }
+  },
+  "bannedPhrases": [
+    "we guarantee",
+    "we promise",
+    "we commit",
+    "coming soon",
+    "in the next release",
+    "we're planning",
+    "we're working on",
+    "it's on the roadmap",
+    "we'll have that",
+    "next quarter",
+    "next month",
+    "in Q",
+    "by [date]",
+    "we will",
+    "we'll",
+    "going to",
+    "will be"
+  ],
+  "outputFormats": {
+    "variants": {
+      "enabled": true,
+      "types": ["short", "medium", "aggressive"],
+      "description": "Produce 3 variants when requested"
+    },
+    "claimsChecklist": {
+      "enabled": true,
+      "required": true,
+      "description": "Must include claims checklist output"
+    }
+  },
+  "allowedContentTypes": [
+    "post",
+    "email",
+    "landing",
+    "case_study",
+    "ad_copy",
+    "linkedin_ad",
+    "google_display_ad",
+    "square_ad"
+  ]
+}
+
