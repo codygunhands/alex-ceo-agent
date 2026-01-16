@@ -9,11 +9,25 @@ import { join } from 'path';
 
 export class AgentService {
   private prisma: PrismaClient;
+  private prismaRead: PrismaClient;
   private gradient: GradientProvider;
   private kb: KnowledgeBase;
 
   constructor() {
-    this.prisma = new PrismaClient();
+    // Write client (primary database)
+    this.prisma = new PrismaClient({
+      datasources: {
+        db: { url: process.env.DATABASE_URL },
+      },
+    });
+    
+    // Read client (read replica)
+    this.prismaRead = new PrismaClient({
+      datasources: {
+        db: { url: process.env.DATABASE_READ_URL || process.env.DATABASE_URL },
+      },
+    });
+    
     this.gradient = new GradientProvider();
     this.kb = new KnowledgeBase();
   }
