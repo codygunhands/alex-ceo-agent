@@ -2,6 +2,7 @@ import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import { agentRoutes } from './routes/agent';
 import { internalRoutes } from './routes/internal';
 import { boardRoutes } from './routes/board';
+import { migrationRoutes } from './routes/migrations';
 
 const fastify = Fastify({
   logger: {
@@ -19,6 +20,7 @@ const fastify = Fastify({
 fastify.register(agentRoutes);
 fastify.register(internalRoutes, { prefix: '/internal' });
 fastify.register(boardRoutes);
+fastify.register(migrationRoutes);
 
 // Rate limiting middleware (simple in-memory for now)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -50,6 +52,24 @@ fastify.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply
 
 const start = async () => {
   try {
+    // Run migrations on startup if DATABASE_URL is set
+    if (process.env.DATABASE_URL && process.env.DATABASE_URL !== 'postgresql://dummy:dummy@dummy:5432/dummy') {
+      try {
+        fastify.log.info('Running database migrations on startup...');
+        const { execSync } = require('child_process');
+        execSync('npx prisma migrate deploy', {
+          encoding: 'utf-8',
+          env: { ...process.env },
+          stdio: 'inherit',
+          timeout: 60000,
+        });
+        fastify.log.info('✅ Migrations completed');
+      } catch (migrationError: any) {
+        fastify.log.warn('⚠️  Migrations failed (will retry via endpoint):', migrationError.message);
+        // Don't exit - app can still run, migrations can be run manually
+      }
+    }
+    
     const port = parseInt(process.env.PORT || '3000', 10);
     const host = process.env.HOST || '0.0.0.0';
     
