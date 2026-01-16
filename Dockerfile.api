@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libgif-dev \
     librsvg2-dev \
+    python3 \
+    make \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
@@ -17,7 +20,8 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN npm ci
+# Use npm install if npm ci fails (more forgiving)
+RUN npm ci || npm install
 
 # Copy Prisma schema first (needed for generate)
 COPY prisma ./prisma
