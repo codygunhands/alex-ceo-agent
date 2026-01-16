@@ -70,6 +70,15 @@ const start = async () => {
       }
     }
     
+    // Initialize board communication
+    try {
+      const { initializeBoardCommunication } = await import('./services/board-communication');
+      await initializeBoardCommunication();
+    } catch (error: any) {
+      fastify.log.warn('⚠️  Board communication initialization failed:', error.message);
+      // Don't exit - app can still run
+    }
+    
     const port = parseInt(process.env.PORT || '3000', 10);
     const host = process.env.HOST || '0.0.0.0';
     

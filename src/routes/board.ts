@@ -50,11 +50,25 @@ export async function boardRoutes(fastify: FastifyInstance) {
         },
       });
       
-      // If sending to specific board member, try to notify them via their API
-      if (body.to !== 'all') {
-        // TODO: Implement API call to target board member
-        // For now, just log it
-        fastify.log.info(`Message sent to ${body.to}: ${body.message}`);
+      // Send message to board member(s) via API
+      try {
+        const { sendBoardMessage } = await import('../services/board-communication');
+        const result = await sendBoardMessage(
+          body.to,
+          body.message,
+          body.type || 'update',
+          body.context,
+          body.priority || 'medium'
+        );
+        
+        if (!result.success) {
+          fastify.log.warn(`Failed to deliver message to ${body.to}: ${result.error}`);
+        } else {
+          fastify.log.info(`Message delivered to ${body.to}: ${body.message.substring(0, 50)}...`);
+        }
+      } catch (error: any) {
+        fastify.log.error(`Error sending board message: ${error.message}`);
+        // Don't fail the request - message is still stored in DB
       }
       
       return reply.send(message);

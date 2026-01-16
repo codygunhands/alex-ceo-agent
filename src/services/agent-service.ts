@@ -175,15 +175,92 @@ export class AgentService {
 
     const totalLatency = Date.now() - startTime;
 
+    // Track decision if this was a decision-making interaction (CEO only)
+    const currentEmployee = process.env.AI_EMPLOYEE_NAME || 'alex-ceo';
+    if (currentEmployee === 'alex-ceo' && validActions.some(a => 
+      ['approve_initiative', 'reject_initiative', 'make_decision', 'allocate_resources'].includes(a.type)
+    )) {
+      try {
+        const { DecisionTracker } = await import('./decision-tracker');
+        const tracker = new DecisionTracker();
+        
+        // Calculate confidence based on response quality
+        const confidence = this.calculateConfidence(finalResponse, validActions, citations);
+        
+        // Assess risk based on budget impact
+        const budgetImpact = validActions.reduce((sum, a) => {
+          if (a.type === 'allocate_resources' && a.payload?.amount) {
+            return sum + (a.payload.amount || 0);
+          }
+          return sum;
+        }, 0);
+        
+        const riskLevel = tracker.assessRisk(
+          budgetImpact,
+          'medium', // strategic impact
+          true, // reversibility
+          citations.length // consultation count
+        );
+        
+        tracker.recordDecision({
+          member: aiEmployee,
+          type: validActions.find(a => a.type === 'approve_initiative') ? 'approval' :
+                validActions.find(a => a.type === 'reject_initiative') ? 'rejection' :
+                validActions.find(a => a.type === 'allocate_resources') ? 'resource_allocation' : 'proposal',
+          description: finalResponse.substring(0, 200),
+          confidence,
+          riskLevel,
+          consultedMembers: [],
+          budgetImpact,
+          rationale: finalResponse,
+        });
+      } catch (error) {
+        // Don't fail the request if decision tracking fails
+        console.error('Failed to track decision:', error);
+      }
+    }
+
     return {
       reply: finalResponse,
       actions: validActions,
       confidence: 0.8, // Could be computed from model response
       citations: citations.map(c => ({
         doc: c.doc,
-        anchor: c.anchor,
+        anchor: c.anchor || '',
       })),
     };
+  }
+
+  private calculateConfidence(
+    response: string,
+    actions: Array<{ type: string; payload: any }>,
+    citations: Array<{ doc: string; anchor?: string }>
+  ): number {
+    let confidence = 50; // Base confidence
+    
+    // Citations increase confidence
+    confidence += Math.min(citations.length * 10, 20);
+    
+    // Actions with payloads increase confidence
+    if (actions.length > 0) {
+      confidence += 10;
+    }
+    
+    // Response length indicates thoughtfulness
+    if (response.length > 200) {
+      confidence += 10;
+    }
+    
+    // Check for uncertainty phrases (decrease confidence)
+    const uncertaintyPhrases = ['maybe', 'perhaps', 'might', 'could', 'possibly', 'uncertain'];
+    const lowerResponse = response.toLowerCase();
+    uncertaintyPhrases.forEach(phrase => {
+      if (lowerResponse.includes(phrase)) {
+        confidence -= 5;
+      }
+    });
+    
+    return Math.max(0, Math.min(100, confidence));
   }
 
   private buildSystemPrompt(
