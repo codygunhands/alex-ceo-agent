@@ -70,7 +70,7 @@ services:
       repo: codygunhands/alex-ceo-agent
       branch: main
       deploy_on_push: true
-    build_command: npm install && npx prisma generate && npm run build
+    build_command: npm install && DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy" npx prisma generate && npm run build
     run_command: node dist/worker.js
     instance_count: 1
     instance_size_slug: basic-xxs
