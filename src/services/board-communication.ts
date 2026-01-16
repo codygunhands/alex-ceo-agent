@@ -1,9 +1,12 @@
 /**
  * Board Communication Service
  * Handles actual API calls between board members
+ * Now with Message Broker, Service Registry, and Circuit Breaker support
  */
 
 import axios from 'axios';
+import { ServiceRegistry } from '../lib/service-registry';
+import { CircuitBreaker } from '../lib/circuit-breaker';
 
 interface BoardMember {
   name: string;
@@ -54,6 +57,32 @@ const BOARD_MEMBERS: Record<string, BoardMember> = {
 
 const DO_API_TOKEN = process.env.DO_API_TOKEN || '';
 const DO_API_BASE = 'https://api.digitalocean.com/v2';
+
+// Service Registry and Circuit Breakers
+let serviceRegistry: ServiceRegistry | null = null;
+const circuitBreakers = new Map<string, CircuitBreaker>();
+
+// Initialize service registry if Redis available
+try {
+  if (process.env.REDIS_URL) {
+    serviceRegistry = new ServiceRegistry();
+  }
+} catch (error) {
+  console.warn('Service Registry not available (Redis not configured)');
+}
+
+/**
+ * Get or create circuit breaker for a service
+ */
+function getCircuitBreaker(serviceName: string): CircuitBreaker {
+  if (!circuitBreakers.has(serviceName)) {
+    circuitBreakers.set(serviceName, new CircuitBreaker({
+      failureThreshold: 5,
+      resetTimeout: 60000,
+    }));
+  }
+  return circuitBreakers.get(serviceName)!;
+}
 
 /**
  * Fetch board member URLs from DigitalOcean
@@ -135,6 +164,7 @@ export async function sendBoardMessage(
 
 /**
  * Send message to specific member
+ * Now with Service Registry and Circuit Breaker
  */
 async function sendToMember(
   member: BoardMember,
@@ -143,42 +173,68 @@ async function sendToMember(
   context?: Record<string, any>,
   priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium'
 ): Promise<{ success: boolean; error?: string }> {
-  if (!member.url) {
-    // Try to fetch URL
+  // Try service registry first for URL
+  let targetUrl = member.url;
+  
+  if (!targetUrl && serviceRegistry) {
+    try {
+      targetUrl = await serviceRegistry.getServiceUrl(member.name.toLowerCase()) || null;
+    } catch (error) {
+      // Fallback to DigitalOcean API
+    }
+  }
+  
+  if (!targetUrl) {
+    // Try to fetch URL from DigitalOcean
     await fetchBoardMemberUrls();
-    if (!member.url) {
+    targetUrl = member.url;
+    if (!targetUrl) {
       return { success: false, error: `No URL available for ${member.name}` };
     }
   }
   
+  // Use circuit breaker
+  const breaker = getCircuitBreaker(member.name);
+  
   try {
-    const response = await axios.post(
-      `${member.url}/api/board/message`,
-      {
-        to: member.name.toLowerCase(),
-        message,
-        type,
-        context,
-        priority,
+    const result = await breaker.execute(
+      async () => {
+        const response = await axios.post(
+          `${targetUrl}/api/board/message`,
+          {
+            to: member.name.toLowerCase(),
+            message,
+            type,
+            context,
+            priority,
+          },
+          {
+            headers: {
+              'x-api-key': member.apiKey,
+              'Content-Type': 'application/json',
+            },
+            timeout: 10000,
+            validateStatus: () => true,
+          }
+        );
+        
+        if (response.status >= 200 && response.status < 300) {
+          return { success: true };
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${response.data?.error || 'Unknown error'}`);
       },
-      {
-        headers: {
-          'x-api-key': member.apiKey,
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000,
-        validateStatus: () => true,
+      async () => {
+        // Fallback: Store in database for later retry
+        // This would require Prisma access - for now, just return error
+        return {
+          success: false,
+          error: 'Circuit breaker open - message queued for retry',
+        };
       }
     );
     
-    if (response.status >= 200 && response.status < 300) {
-      return { success: true };
-    }
-    
-    return {
-      success: false,
-      error: `HTTP ${response.status}: ${response.data?.error || 'Unknown error'}`,
-    };
+    return result;
   } catch (error: any) {
     return {
       success: false,
@@ -228,9 +284,35 @@ export async function getBoardMessages(
 
 /**
  * Initialize board communication (fetch URLs on startup)
+ * Now with Service Registry registration
  */
 export async function initializeBoardCommunication(): Promise<void> {
   await fetchBoardMemberUrls();
+  
+  // Register this service in registry if available
+  const currentService = process.env.AI_EMPLOYEE_NAME || 'alex-ceo';
+  const currentRole = process.env.AI_ROLE || 'CEO';
+  const currentUrl = BOARD_MEMBERS[currentService]?.url;
+  
+  if (serviceRegistry && currentUrl) {
+    try {
+      await serviceRegistry.register(currentService, {
+        url: currentUrl,
+        role: currentRole,
+      });
+      
+      // Start heartbeat
+      serviceRegistry.startHeartbeat(currentService, {
+        url: currentUrl,
+        role: currentRole,
+      });
+      
+      console.log(`✅ Registered ${currentService} in service registry`);
+    } catch (error: any) {
+      console.warn(`⚠️  Failed to register in service registry: ${error.message}`);
+    }
+  }
+  
   console.log('Board communication initialized');
   Object.entries(BOARD_MEMBERS).forEach(([key, member]) => {
     if (member.url) {

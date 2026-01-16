@@ -9,7 +9,7 @@ services:
     build_command: npm install && DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy" npx prisma generate && npm run build
     run_command: node dist/index.js
     http_port: 3000
-    instance_count: 1
+    instance_count: 2
     instance_size_slug: basic-xxs
     envs:
       - key: DATABASE_URL
@@ -72,7 +72,7 @@ services:
       deploy_on_push: true
     build_command: npm install && DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy" npx prisma generate && npm run build
     run_command: node dist/worker.js
-    instance_count: 1
+    instance_count: 2
     instance_size_slug: basic-xxs
     envs:
       - key: DATABASE_URL
