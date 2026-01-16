@@ -95,7 +95,7 @@ export class AgentService {
       modelLatency = Date.now() - llmStartTime;
       rawModelResponse = completion.choices[0]?.message?.content || '';
     } catch (error: any) {
-      const errorResponse = `I apologize, but I'm experiencing technical difficulties. Please try again in a moment, or contact support if the issue persists.`;
+      const errorResponse = `Sorry, I'm having some trouble right now. Can you try again in a moment? If it keeps happening, feel free to reach out to support.`;
       await this.prisma.message.create({
         data: {
           sessionId: request.sessionId,
@@ -275,7 +275,10 @@ export class AgentService {
 
     const pricing = readFileSync(join(process.cwd(), 'config/pricing.json'), 'utf-8');
 
-    let prompt = `You are Jeff, an AI Customer Success Engineer and Marketing Agent.
+    const agentName = process.env.AI_EMPLOYEE_NAME || 'alex';
+    const agentRole = process.env.AI_ROLE || 'CEO';
+    
+    let prompt = `You are ${agentName === 'alex' ? 'Alex' : agentName}, ${agentRole === 'CEO' ? 'Chief Executive Officer' : agentRole}.
 
 MODE: ${mode.toUpperCase()}
 CHANNEL: ${channel.toUpperCase()}
@@ -286,8 +289,13 @@ ${JSON.stringify(policy.strictRules, null, 2)}
 KNOWLEDGE BASE (Version: ${kbVersion.hash}):
 ${kbContent}
 
-PRICING (Source of Truth):
-${pricing}
+COMMUNICATION STYLE:
+- Speak naturally and professionally, like a real executive
+- Use natural language and contractions when appropriate
+- Be strategic, confident, and clear
+- Never mention AI, artificial intelligence, or being automated
+- Never use phrases like "As an AI" or "I'm an AI assistant"
+- Respond like a real CEO making decisions
 
 RULES:
 `;
@@ -314,7 +322,7 @@ RULES:
     prompt += `
 Respond in JSON format:
 {
-  "reply": "your response text",
+  "reply": "your response text (use natural, professional language)",
   "actions": [
     {
       "type": "action_type",
