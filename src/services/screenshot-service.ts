@@ -3,9 +3,18 @@
  * 
  * Uses Puppeteer for headless browser automation.
  * DigitalOcean-native solution.
+ * Puppeteer is optional - service will gracefully degrade if not available.
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
+let puppeteer: any = null;
+try {
+  puppeteer = require('puppeteer');
+} catch (e) {
+  console.warn('Puppeteer module not available. Screenshot generation will be disabled.');
+}
+
+type Browser = any;
+type Page = any;
 
 export interface ScreenshotRequest {
   url?: string;
@@ -32,11 +41,19 @@ export interface ScreenshotResponse {
 
 export class ScreenshotService {
   private browser: Browser | null = null;
+  private puppeteerAvailable: boolean;
+
+  constructor() {
+    this.puppeteerAvailable = !!puppeteer;
+  }
 
   /**
    * Initialize browser (lazy loading)
    */
   private async getBrowser(): Promise<Browser> {
+    if (!this.puppeteerAvailable) {
+      throw new Error('Screenshot service is not available. Puppeteer module is not installed.');
+    }
     if (!this.browser) {
       this.browser = await puppeteer.launch({
         headless: true,

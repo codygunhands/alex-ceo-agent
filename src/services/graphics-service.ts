@@ -3,9 +3,16 @@
  * 
  * Generates images using templates and brand guidelines.
  * DigitalOcean-native solution using Node.js Canvas API.
+ * Canvas is optional - service will gracefully degrade if not available.
  */
 
-import { createCanvas, loadImage, registerFont, CanvasRenderingContext2D } from 'canvas';
+let canvas: any = null;
+try {
+  canvas = require('canvas');
+} catch (e) {
+  console.warn('Canvas module not available. Graphics generation will be disabled.');
+}
+
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -71,15 +78,21 @@ const TEMPLATES = {
 
 export class GraphicsService {
   private templatesDir: string;
+  private canvasAvailable: boolean;
 
   constructor() {
     this.templatesDir = join(process.cwd(), 'kb', 'brand-assets', 'templates');
+    this.canvasAvailable = !!canvas;
   }
 
   /**
    * Generate a brand-consistent graphic from a template
    */
   async generate(request: GraphicsRequest): Promise<GraphicsResponse> {
+    if (!this.canvasAvailable) {
+      throw new Error('Graphics generation is not available. Canvas module is not installed.');
+    }
+
     const template = TEMPLATES[request.template as keyof typeof TEMPLATES];
     if (!template) {
       throw new Error(`Unknown template: ${request.template}`);
@@ -90,8 +103,8 @@ export class GraphicsService {
     const format = request.format || 'png';
 
     // Create canvas
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    const canvasInstance = canvas.createCanvas(width, height);
+    const ctx = canvasInstance.getContext('2d');
 
     // Fill background
     ctx.fillStyle = template.backgroundColor;
@@ -101,7 +114,7 @@ export class GraphicsService {
     await this.renderTemplate(ctx, request.template, request.data, width, height);
 
     // Export image
-    const imageBuffer = canvas.toBuffer(`image/${format}` as any);
+    const imageBuffer = canvasInstance.toBuffer(`image/${format}` as any);
 
     return {
       imageUrl: '', // Will be set by storage service
@@ -119,7 +132,7 @@ export class GraphicsService {
    * Render template-specific content
    */
   private async renderTemplate(
-    ctx: CanvasRenderingContext2D,
+    ctx: any,
     templateName: string,
     data: Record<string, any>,
     width: number,
@@ -151,7 +164,7 @@ export class GraphicsService {
    * Proven format: Headline + Benefit + CTA
    */
   private async renderLinkedInAd(
-    ctx: CanvasRenderingContext2D,
+    ctx: any,
     data: Record<string, any>,
     width: number,
     height: number
@@ -191,7 +204,7 @@ export class GraphicsService {
    * Format: Short headline + CTA
    */
   private async renderGoogleDisplay(
-    ctx: CanvasRenderingContext2D,
+    ctx: any,
     data: Record<string, any>,
     width: number,
     height: number
@@ -219,7 +232,7 @@ export class GraphicsService {
    * Format: Visual-first with text overlay
    */
   private async renderSquareAd(
-    ctx: CanvasRenderingContext2D,
+    ctx: any,
     data: Record<string, any>,
     width: number,
     height: number
@@ -258,7 +271,7 @@ export class GraphicsService {
    * Render logo on canvas
    */
   private async renderLogo(
-    ctx: CanvasRenderingContext2D,
+    ctx: any,
     logoName: string,
     width: number,
     height: number
@@ -267,7 +280,7 @@ export class GraphicsService {
     const logoPath = join(process.cwd(), 'assets', `${logoName}.png`);
     if (existsSync(logoPath)) {
       try {
-        const logo = await loadImage(logoPath);
+        const logo = await canvas.loadImage(logoPath);
         const logoSize = 100;
         const x = width - logoSize - 40;
         const y = 40;
