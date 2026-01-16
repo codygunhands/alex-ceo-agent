@@ -30,7 +30,6 @@ export async function internalRoutes(fastify: FastifyInstance) {
           notes: body.notes,
           source: body.source,
           status: 'new',
-          aiEmployee: aiEmployee,
         },
       });
       
@@ -90,7 +89,6 @@ export async function internalRoutes(fastify: FastifyInstance) {
           sessionId: body.sessionId,
           leadId: body.leadId,
           status: 'open',
-          aiEmployee: aiEmployee,
         },
       });
       

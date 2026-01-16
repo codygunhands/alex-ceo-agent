@@ -41,7 +41,6 @@ const leadScoringWorker = new Worker(
     const lead = await prisma.lead.findFirst({
       where: { 
         id: leadId,
-        aiEmployee: aiEmployee, // Filter by AI employee
       },
     });
     
@@ -58,10 +57,9 @@ const leadScoringWorker = new Worker(
     if (lead.source === 'sales') score += 20;
     if (lead.source === 'onboarding') score += 10;
     
-    await prisma.lead.updateMany({
+    await prisma.lead.update({
       where: { 
         id: leadId,
-        aiEmployee: aiEmployee, // Filter by AI employee
       },
       data: {
         qualificationScore: score,
@@ -83,7 +81,6 @@ const ticketEnrichmentWorker = new Worker(
     const ticket = await prisma.ticket.findFirst({
       where: { 
         id: ticketId,
-        aiEmployee: aiEmployee, // Filter by AI employee
       },
       include: {
         session: {
@@ -116,10 +113,9 @@ const ticketEnrichmentWorker = new Worker(
       ? 'Please check error logs and provide specific error messages.'
       : 'Unknown - requires investigation.';
     
-    await prisma.ticket.updateMany({
+    await prisma.ticket.update({
       where: { 
         id: ticketId,
-        aiEmployee: aiEmployee, // Filter by AI employee
       },
       data: {
         details: summary,
@@ -152,7 +148,6 @@ const followupDraftWorker = new Worker(
     const lastMessage = await prisma.message.findFirst({
       where: {
         sessionId: sessionId,
-        aiEmployee: aiEmployee,
       },
       orderBy: { createdAt: 'desc' },
     });

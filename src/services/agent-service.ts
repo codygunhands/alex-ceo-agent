@@ -44,9 +44,6 @@ export class AgentService {
       },
     });
 
-    // Get AI employee name from environment (defaults to 'jeff')
-    const aiEmployee = process.env.AI_EMPLOYEE_NAME || 'jeff';
-    
     // Save user message
     await this.prisma.message.create({
       data: {
@@ -54,7 +51,6 @@ export class AgentService {
         role: 'user',
         channel: request.channel,
         content: request.message,
-        aiEmployee: aiEmployee,
       },
     });
 
@@ -68,7 +64,6 @@ export class AgentService {
           role: 'assistant',
           channel: request.channel,
           content: preCheck.response,
-          aiEmployee: aiEmployee,
         },
       });
 
@@ -107,7 +102,6 @@ export class AgentService {
           role: 'assistant',
           channel: request.channel,
           content: errorResponse,
-          aiEmployee: aiEmployee,
         },
       });
       return {
@@ -160,7 +154,6 @@ export class AgentService {
         role: 'assistant',
         channel: request.channel,
         content: finalResponse,
-        aiEmployee: aiEmployee,
       },
     });
 
@@ -177,7 +170,6 @@ export class AgentService {
         actionsJson: JSON.stringify(validActions),
         model: process.env.GRADIENT_MODEL || 'unknown',
         latencyMs: modelLatency,
-        aiEmployee: aiEmployee,
       },
     });
 
@@ -276,7 +268,6 @@ Allowed actions for this mode: ${policy.allowedActions.join(', ')}
     const recentMessages = await this.prisma.message.findMany({
       where: { 
         sessionId,
-        aiEmployee: aiEmployee, // Filter by AI employee
       },
       orderBy: { createdAt: 'desc' },
       take: 10,
