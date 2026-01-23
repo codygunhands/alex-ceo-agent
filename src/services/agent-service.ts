@@ -14,6 +14,19 @@ export class AgentService {
   private kb: KnowledgeBase;
 
   constructor() {
+    // Validate required environment variables
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is required');
+    }
+    
+    if (!process.env.GRADIENT_API_KEY) {
+      throw new Error('GRADIENT_API_KEY environment variable is required');
+    }
+    
+    if (!process.env.GRADIENT_MODEL) {
+      throw new Error('GRADIENT_MODEL environment variable is required');
+    }
+    
     // Write client (primary database)
     this.prisma = new PrismaClient({
       datasources: {
@@ -33,7 +46,8 @@ export class AgentService {
   }
 
   async processRequest(request: AgentRequest): Promise<AgentResponse> {
-    const startTime = Date.now();
+    try {
+      const startTime = Date.now();
 
     // Initialize guardrails for this mode
     const guardrails = new Guardrails(request.mode);
@@ -190,49 +204,19 @@ export class AgentService {
     const totalLatency = Date.now() - startTime;
 
     // Track decision if this was a decision-making interaction (CEO only)
-    const currentEmployee = process.env.AI_EMPLOYEE_NAME || 'alex-ceo';
-    if (currentEmployee === 'alex-ceo' && validActions.some(a => 
-      ['approve_initiative', 'reject_initiative', 'make_decision', 'allocate_resources'].includes(a.type)
-    )) {
-      try {
-        const { DecisionTracker } = await import('./decision-tracker');
-        const tracker = new DecisionTracker();
-        
-        // Calculate confidence based on response quality
-        const confidence = this.calculateConfidence(finalResponse, validActions, citations);
-        
-        // Assess risk based on budget impact
-        const budgetImpact = validActions.reduce((sum, a) => {
-          if (a.type === 'allocate_resources' && a.payload?.amount) {
-            return sum + (a.payload.amount || 0);
-          }
-          return sum;
-        }, 0);
-        
-        const riskLevel = tracker.assessRisk(
-          budgetImpact,
-          'medium', // strategic impact
-          true, // reversibility
-          citations.length // consultation count
-        );
-        
-        tracker.recordDecision({
-          member: aiEmployee,
-          type: validActions.find(a => a.type === 'approve_initiative') ? 'approval' :
-                validActions.find(a => a.type === 'reject_initiative') ? 'rejection' :
-                validActions.find(a => a.type === 'allocate_resources') ? 'resource_allocation' : 'proposal',
-          description: finalResponse.substring(0, 200),
-          confidence,
-          riskLevel,
-          consultedMembers: [],
-          budgetImpact,
-          rationale: finalResponse,
-        });
-      } catch (error) {
-        // Don't fail the request if decision tracking fails
-        console.error('Failed to track decision:', error);
-      }
-    }
+    // Disabled - DecisionTracker module not found
+    // const currentEmployee = process.env.AI_EMPLOYEE_NAME || 'alex-ceo';
+    // if (currentEmployee === 'alex-ceo' && validActions.some(a => 
+    //   ['approve_initiative', 'reject_initiative', 'make_decision', 'allocate_resources'].includes(a.type)
+    // )) {
+    //   try {
+    //     const { DecisionTracker } = await import('./decision-tracker');
+    //     const tracker = new DecisionTracker();
+    //     // ... decision tracking code ...
+    //   } catch (error) {
+    //     console.error('Failed to track decision:', error);
+    //   }
+    // }
 
     return {
       reply: finalResponse,
@@ -243,6 +227,16 @@ export class AgentService {
         anchor: c.anchor || '',
       })),
     };
+    } catch (error: any) {
+      // Log the full error for debugging
+      console.error('Error in processRequest:', error);
+      if (error.stack) {
+        console.error('Stack trace:', error.stack);
+      }
+      
+      // Re-throw with more context
+      throw new Error(`Failed to process request: ${error.message || 'Unknown error'}`);
+    }
   }
 
   private calculateConfidence(

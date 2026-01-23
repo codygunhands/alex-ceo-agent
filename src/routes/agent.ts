@@ -4,7 +4,9 @@ import { AgentRequestSchema } from '../types';
 import { z } from 'zod';
 
 export async function agentRoutes(fastify: FastifyInstance) {
-  const agentService = new AgentService();
+  // Lazy initialization - don't create AgentService until first request
+  // This prevents route registration failures if constructor throws errors
+  let agentService: AgentService | null = null;
 
   fastify.post('/v1/agent', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -23,6 +25,19 @@ export async function agentRoutes(fastify: FastifyInstance) {
         }
       }
 
+      // Lazy initialization - create service on first request
+      if (!agentService) {
+        try {
+          agentService = new AgentService();
+        } catch (initError: any) {
+          fastify.log.error('Failed to initialize AgentService:', initError);
+          return reply.status(500).send({
+            error: 'Service initialization failed',
+            message: initError.message || 'Failed to initialize agent service. Check DATABASE_URL, GRADIENT_API_KEY, and GRADIENT_MODEL environment variables.',
+          });
+        }
+      }
+
       const response = await agentService.processRequest(body);
       
       return reply.send(response);
@@ -34,9 +49,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
         });
       }
       
-      fastify.log.error(error);
+      fastify.log.error('Agent request error:', error);
       return reply.status(500).send({
         error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
     }
   });
