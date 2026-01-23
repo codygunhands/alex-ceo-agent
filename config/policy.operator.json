@@ -1,7 +1,7 @@
 {
   "mode": "operator",
   "description": "Customer-facing operator mode - strict, no customization",
-  "allowedChannels": ["sales", "onboarding", "support"],
+  "allowedChannels": ["sales", "onboarding", "support", "board"],
   "allowedActions": [
     "create_lead",
     "update_lead_status",

@@ -82,8 +82,9 @@ export class AgentService {
       },
     });
 
-    // Pre-LLM guardrails check
-    const preCheck = guardrails.checkPreLLM(request.message, request.channel);
+    // Pre-LLM guardrails check (pass metadata to check for owner/operator context)
+    const metadata = request.metadata || {};
+    const preCheck = guardrails.checkPreLLM(request.message, request.channel, metadata);
     if (preCheck.shouldBlock && preCheck.response) {
       // Save assistant response
       await this.prisma.message.create({
@@ -123,6 +124,14 @@ export class AgentService {
       modelLatency = Date.now() - llmStartTime;
       rawModelResponse = completion.choices[0]?.message?.content || '';
     } catch (error: any) {
+      // Log the actual error for debugging
+      console.error('LLM call failed:', {
+        error: error.message,
+        model: process.env.GRADIENT_MODEL,
+        hasApiKey: !!process.env.GRADIENT_API_KEY,
+        apiKeyPrefix: process.env.GRADIENT_API_KEY?.substring(0, 10),
+      });
+      
       const errorResponse = `Sorry, I'm having some trouble right now. Can you try again in a moment? If it keeps happening, feel free to reach out to support.`;
       await this.prisma.message.create({
         data: {
@@ -172,8 +181,8 @@ export class AgentService {
       }
     }
 
-    // Find citations
-    const citations = this.kb.findCitations(finalResponse, kbVersion);
+    // Find citations using semantic search
+    const citations = await this.kb.findCitations(finalResponse, kbVersion);
 
     // Save assistant message
     await this.prisma.message.create({

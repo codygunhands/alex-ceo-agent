@@ -10,6 +10,33 @@ export interface Violation {
   matchedText?: string;
 }
 
+/**
+ * Check if message is from owner/operator (not a customer)
+ */
+function isOwnerOperatorMessage(message: string, metadata: Record<string, unknown> = {}): boolean {
+  // Check metadata flags first (most reliable)
+  if (metadata?.ownerOperator === true || 
+      metadata?.NOT_CUSTOMER === true || 
+      metadata?.boardCoordination === true ||
+      metadata?.source === 'super-admin' ||
+      metadata?.ownerDirective === true) {
+    return true;
+  }
+  
+  // Check message prefix as fallback
+  const ownerPrefixes = [
+    '[CRITICAL: OWNER/OPERATOR',
+    '[OWNER/OPERATOR MESSAGE',
+    '[OWNER/OPERATOR DIRECTIVE',
+    'YOU ARE TALKING TO DYLAN',
+    'THIS IS THE OWNER GIVING YOU A DIRECTIVE',
+    'THIS IS NOT A CUSTOMER'
+  ];
+  
+  const messageUpper = message.toUpperCase();
+  return ownerPrefixes.some(prefix => messageUpper.includes(prefix.toUpperCase()));
+}
+
 export class Guardrails {
   private policy!: Policy;
   private pricing!: Pricing;
@@ -62,12 +89,39 @@ export class Guardrails {
   }
 
   // Pre-LLM guardrails
-  checkPreLLM(message: string, channel: Channel): {
+  checkPreLLM(message: string, channel: Channel, metadata: Record<string, unknown> = {}): {
     shouldBlock: boolean;
     response?: string;
     violations: Violation[];
   } {
     const violations: Violation[] = [];
+
+    // CRITICAL: Don't block owner/operator messages
+    if (isOwnerOperatorMessage(message, metadata)) {
+      console.log('[GUARDRAILS] Owner/operator message detected - bypassing customer guardrails');
+      return {
+        shouldBlock: false,
+        violations: [],
+      };
+    }
+
+    // If channel is 'board', this is internal board communication - bypass customer guardrails
+    if (channel === 'board') {
+      console.log('[GUARDRAILS] Board channel detected - internal communication');
+      return {
+        shouldBlock: false,
+        violations: [],
+      };
+    }
+
+    // If mode is 'strategic', this is board-level communication - bypass customer guardrails
+    if (this.policy.mode === 'strategic') {
+      console.log('[GUARDRAILS] Strategic mode detected - board-level communication');
+      return {
+        shouldBlock: false,
+        violations: [],
+      };
+    }
 
     // Check for customization requests in operator mode
     if (this.policy.mode === 'operator') {

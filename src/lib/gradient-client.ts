@@ -38,7 +38,13 @@ export class GradientClient {
 
   constructor() {
     this.apiKey = process.env.GRADIENT_API_KEY || '';
-    this.baseUrl = process.env.GRADIENT_BASE_URL || 'https://api.gradient.ai/api/v1';
+    // DigitalOcean Gradient AI Platform uses inference.do-ai.run
+    // Check if API key is DigitalOcean format (starts with sk-do-)
+    const isDigitalOceanKey = this.apiKey.startsWith('sk-do-');
+    this.baseUrl = process.env.GRADIENT_BASE_URL || 
+      (isDigitalOceanKey 
+        ? 'https://inference.do-ai.run/v1' 
+        : 'https://api.gradient.ai/api/v1');
     this.model = process.env.GRADIENT_MODEL || '';
 
     if (!this.apiKey) {
@@ -47,6 +53,13 @@ export class GradientClient {
     if (!this.model) {
       throw new Error('GRADIENT_MODEL is required');
     }
+    
+    // Log configuration (without exposing full API key)
+    console.log('GradientClient initialized:', {
+      baseUrl: this.baseUrl,
+      model: this.model,
+      apiKeyPrefix: this.apiKey.substring(0, 10) + '...',
+    });
 
     this.client = axios.create({
       baseURL: this.baseUrl,

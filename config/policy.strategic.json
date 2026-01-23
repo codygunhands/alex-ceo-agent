@@ -1,6 +1,7 @@
 {
   "mode": "strategic",
   "description": "CEO mode - Strategic vision and company direction",
+  "allowedChannels": ["board", "support", "marketing"],
   "allowedActions": [
     "approve_initiative",
     "reject_initiative",

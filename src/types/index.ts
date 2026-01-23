@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 export type Mode = 'operator' | 'marketing' | 'strategic';
-export type Channel = 'sales' | 'onboarding' | 'support' | 'marketing';
+export type Channel = 'sales' | 'onboarding' | 'support' | 'marketing' | 'board';
 
 export const AgentRequestSchema = z.object({
   sessionId: z.string().uuid(),
-  mode: z.enum(['operator', 'marketing']),
-  channel: z.enum(['sales', 'onboarding', 'support', 'marketing']),
+  mode: z.enum(['operator', 'marketing', 'strategic']),
+  channel: z.enum(['sales', 'onboarding', 'support', 'marketing', 'board']),
   message: z.string().min(1).max(5000),
   metadata: z.record(z.unknown()).optional(),
 });
