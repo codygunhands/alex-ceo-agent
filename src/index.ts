@@ -81,13 +81,41 @@ const start = async () => {
           stdio: 'inherit',
           timeout: 60000,
         });
-        // Then run migrations
-        execSync('npx prisma migrate deploy', {
-          encoding: 'utf-8',
-          env: { ...process.env },
-          stdio: 'inherit',
-          timeout: 60000,
-        });
+        // Use db push if migrations don't exist, otherwise use migrate deploy
+        try {
+          // Check if migrations directory exists
+          const { existsSync } = require('fs');
+          const { join } = require('path');
+          const migrationsDir = join(process.cwd(), 'prisma', 'migrations');
+          
+          if (existsSync(migrationsDir)) {
+            // Migrations exist, use migrate deploy
+            execSync('npx prisma migrate deploy', {
+              encoding: 'utf-8',
+              env: { ...process.env },
+              stdio: 'inherit',
+              timeout: 60000,
+            });
+          } else {
+            // No migrations, use db push to sync schema
+            fastify.log.info('No migrations found, using db push to sync schema...');
+            execSync('npx prisma db push --accept-data-loss', {
+              encoding: 'utf-8',
+              env: { ...process.env },
+              stdio: 'inherit',
+              timeout: 60000,
+            });
+          }
+        } catch (migrateError: any) {
+          // If migrate deploy fails, try db push as fallback
+          fastify.log.warn('migrate deploy failed, trying db push...');
+          execSync('npx prisma db push --accept-data-loss', {
+            encoding: 'utf-8',
+            env: { ...process.env },
+            stdio: 'inherit',
+            timeout: 60000,
+          });
+        }
         fastify.log.info('✅ Migrations completed');
       } catch (migrationError: any) {
         fastify.log.error('❌ Migrations failed:', migrationError.message);
