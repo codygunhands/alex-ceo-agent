@@ -50,9 +50,12 @@ export async function agentRoutes(fastify: FastifyInstance) {
       }
       
       fastify.log.error('Agent request error:', error);
+      if (error.stack) {
+        fastify.log.error('Stack trace:', error.stack);
+      }
       return reply.status(500).send({
         error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: error.message || 'An unexpected error occurred',
       });
     }
   });

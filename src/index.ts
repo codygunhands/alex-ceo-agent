@@ -1,7 +1,7 @@
 import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import { agentRoutes } from './routes/agent';
 import { internalRoutes } from './routes/internal';
-import { boardRoutes } from './routes/board';
+// import { boardRoutes } from './routes/board';
 import { migrationRoutes } from './routes/migrations';
 
 const fastify = Fastify({
@@ -36,7 +36,7 @@ fastify.setErrorHandler((error, request, reply) => {
 // Register routes
 fastify.register(agentRoutes);
 fastify.register(internalRoutes, { prefix: '/internal' });
-fastify.register(boardRoutes);
+// fastify.register(boardRoutes);
 fastify.register(migrationRoutes);
 
 // Rate limiting middleware (simple in-memory for now)
